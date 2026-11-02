@@ -11,6 +11,18 @@
     --text: #222;
     --sub: #888;
     --accent: #2b6cb0;
+    --row: #fafafa;
+    --shadow: rgba(0,0,0,0.08);
+    color-scheme: light;
+  }
+  :root[data-theme="dark"] {
+    --bg: #171a21;
+    --card: #242833;
+    --text: #f1f3f5;
+    --sub: #aab1bd;
+    --row: #2d3340;
+    --shadow: rgba(0,0,0,0.28);
+    color-scheme: dark;
   }
   * { box-sizing: border-box; }
   body {
@@ -27,10 +39,11 @@
     max-width: 480px;
     background: var(--card);
     border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 20px var(--shadow);
     padding: 28px 20px;
     text-align: center;
   }
+  .toolbar { display: flex; justify-content: flex-end; margin-bottom: 8px; }
   h1 { font-size: 22px; margin: 0 0 6px; }
   .desc { color: var(--sub); font-size: 14px; margin: 0 0 22px; }
   button {
@@ -44,6 +57,16 @@
     border-radius: 12px;
     cursor: pointer;
   }
+  .theme-toggle {
+    width: auto;
+    padding: 8px 12px;
+    font-size: 14px;
+    color: var(--text);
+    background: var(--row);
+    border: 1px solid var(--sub);
+    border-radius: 999px;
+  }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
   button:active { transform: scale(0.98); }
   .games { margin-top: 24px; display: flex; flex-direction: column; gap: 12px; }
   .game {
@@ -52,13 +75,21 @@
     gap: 8px;
     padding: 10px;
     border-radius: 10px;
-    background: #fafafa;
+    background: var(--row);
     animation: fadeIn 0.4s ease both;
   }
   .label { width: 22px; font-weight: bold; color: var(--sub); }
-  .balls { display: flex; gap: 6px; flex: 1; justify-content: center; }
+  .balls {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 6px;
+    flex: 1;
+    max-width: 270px;
+  }
   .ball {
-    width: 40px; height: 40px;
+    width: 100%;
+    max-width: 40px;
+    aspect-ratio: 1;
     border-radius: 50%;
     display: flex; align-items: center; justify-content: center;
     font-weight: bold; font-size: 15px;
@@ -74,16 +105,19 @@
   .footer { margin-top: 24px; font-size: 12px; color: var(--sub); }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
   @media (max-width: 380px) {
-    .ball { width: 34px; height: 34px; font-size: 13px; }
+    .ball { max-width: 34px; font-size: 13px; }
   }
 </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="toolbar">
+      <button class="theme-toggle" id="themeBtn" type="button" aria-label="다크 모드로 전환" aria-pressed="false">🌙 다크 모드</button>
+    </div>
     <h1>🍀 로또 번호 생성기</h1>
     <p class="desc">버튼을 누르면 5게임(게임당 6개 번호)이 만들어집니다</p>
-    <button id="drawBtn">번호 뽑기</button>
-    <div class="games" id="games"></div>
+    <button id="drawBtn" type="button">번호 뽑기</button>
+    <div class="games" id="games" aria-live="polite" aria-label="생성된 로또 번호"></div>
     <div class="footer">v1.0 · 2026-11-02 작성</div>
   </div>
 
@@ -91,6 +125,27 @@
   const GAMES = 5;   // 게임 수
   const PICK = 6;    // 게임당 번호 개수
   const MAX = 45;    // 1~45
+
+  const themeBtn = document.getElementById("themeBtn");
+  const savedTheme = localStorage.getItem("lotto-theme");
+  const initialTheme = savedTheme === "light" || savedTheme === "dark"
+    ? savedTheme
+    : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+
+  function setTheme(theme) {
+    document.documentElement.dataset.theme = theme;
+    const isDark = theme === "dark";
+    themeBtn.textContent = isDark ? "☀️ 화이트 모드" : "🌙 다크 모드";
+    themeBtn.setAttribute("aria-label", isDark ? "화이트 모드로 전환" : "다크 모드로 전환");
+    themeBtn.setAttribute("aria-pressed", String(isDark));
+  }
+
+  setTheme(initialTheme);
+  themeBtn.addEventListener("click", () => {
+    const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+    localStorage.setItem("lotto-theme", nextTheme);
+    setTheme(nextTheme);
+  });
 
   // 1~45 중 겹치지 않게 6개 뽑아 오름차순 정렬
   function drawOneGame() {
